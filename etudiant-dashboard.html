@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mon Espace - SAA</title>
+    <link rel="stylesheet" href="../assets/css/dashboard.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        .big-stat { text-align: center; margin-bottom: 30px; }
+        .moyenne-value { font-size: 64px; font-weight: 800; background: linear-gradient(135deg, #6c63ff, #8b83ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .statut-badge { display: inline-flex; align-items: center; gap: 8px; padding: 8px 20px; border-radius: 30px; font-weight: 600; font-size: 18px; margin-top: 10px; }
+        .statut-danger { background: rgba(255,77,77,0.15); color: #ff4d4d; }
+        .statut-warning { background: rgba(255,193,7,0.15); color: #ffc107; }
+        .statut-success { background: rgba(40,167,69,0.15); color: #28a745; }
+
+        .matiere-card { background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 12px; padding: 20px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
+        .matiere-info h3 { font-size: 16px; margin-bottom: 5px; }
+        .matiere-details { font-size: 12px; color: var(--text-secondary); }
+        .matiere-moyenne { font-size: 24px; font-weight: 700; }
+        .moy-bonne { color: #28a745; }
+        .moy-moyenne { color: #ffc107; }
+        .moy-mauvaise { color: #ff4d4d; }
+        .reco-card { background: rgba(255, 193, 7, 0.05); border: 1px solid rgba(255, 193, 7, 0.2); border-radius: 12px; padding: 15px 20px; margin-bottom: 10px; color: #e0e0e0; font-size: 14px; display: flex; gap: 10px; align-items: flex-start; }
+        .reco-card i { color: #ffc107; margin-top: 3px; }
+
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body>
+
+    <aside class="sidebar">
+        <div class="logo-sidebar"><i class="fas fa-graduation-cap"></i><span>Mon Espace</span></div>
+        <nav class="sidebar-nav">
+            <a href="etudiant-dashboard.html" class="nav-link active"><i class="fas fa-chart-pie"></i> Mes Résultats</a>
+        </nav>
+        <div class="sidebar-footer"><a href="#" id="logoutBtn" class="nav-link logout"><i class="fas fa-sign-out-alt"></i> Déconnexion</a></div>
+    </aside>
+
+    <main class="main-content">
+        <header class="topbar">
+            <div class="welcome-text">
+                <h1>Bonjour, <span id="nomEtudiant">...</span> 👨‍🎓</h1>
+                <p>Voici vos résultats académiques en temps réel.</p>
+            </div>
+            <div class="user-info">
+                <div class="avatar" style="background: #28a745;">E</div>
+                <span>Étudiant</span>
+            </div>
+        </header>
+
+               <!-- Statistique Principale -->
+        <div class="glass-card big-stat" id="statsContainer">
+            <p style="color: var(--text-secondary); margin-bottom: 10px;">Moyenne Générale</p>
+            <div class="moyenne-value" id="moyGen">--</div>
+            <div id="statutContainer"></div>
+            
+            <!-- NOUVEAU BOUTON PDF -->
+            <button onclick="genererPDF()" style="margin-top: 25px; background: var(--accent-main); color: white; border: none; padding: 12px 25px; border-radius: 8px; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; gap: 8px;">
+                <i class="fas fa-file-pdf"></i> Télécharger mon Relevé de Notes
+            </button>
+        </div>
+
+               <!-- Liste des Matières -->
+        <h2 style="margin-bottom: 15px; font-size: 18px;">Détail par matière</h2>
+        <div id="matieresContainer">
+            <p style="color: var(--text-secondary);">Chargement des données...</p>
+        </div>
+
+        <!-- NOUVEAU : Section Recommandations -->
+        <div id="recoSection" style="display: none; margin-top: 30px;">
+            <h2 style="margin-bottom: 15px; font-size: 18px;"><i class="fas fa-lightbulb" style="color: #ffc107;"></i> Recommandations personnalisées</h2>
+            <div id="recoContainer"></div>
+        </div>
+    </main>
+
+    <script src="../assets/js/etudiant.js"></script>
+</body>
+</html>

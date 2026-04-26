@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Accueil Enseignant - SAA</title>
+    <link rel="stylesheet" href="../assets/css/dashboard.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        .action-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 25px; margin-top: 20px; }
+        .action-card {
+            background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 20px;
+            padding: 40px; text-align: center; text-decoration: none; color: white;
+            transition: all 0.3s ease; cursor: pointer;
+        }
+        .action-card:hover { transform: translateY(-8px); border-color: var(--accent-main); box-shadow: 0 15px 30px rgba(108, 99, 255, 0.15); }
+        .action-card i { font-size: 48px; color: var(--accent-main); margin-bottom: 20px; }
+        .action-card h3 { font-size: 20px; margin-bottom: 10px; }
+        .action-card p { font-size: 14px; color: var(--text-secondary); }
+    </style>
+</head>
+<body>
+
+    <aside class="sidebar">
+        <div class="logo-sidebar"><i class="fas fa-graduation-cap"></i><span>SAA Enseignant</span></div>
+        <nav class="sidebar-nav">
+            <a href="enseignant-dashboard.html" class="nav-link active"><i class="fas fa-home"></i> Accueil</a>
+            <a href="enseignant-saisie-notes.html" class="nav-link"><i class="fas fa-pen"></i> Saisie des Notes</a>
+            <a href="enseignant-suivi.html" class="nav-link"><i class="fas fa-chart-bar"></i> Suivi Étudiants</a>
+        </nav>
+        <div class="sidebar-footer"><a href="#" id="logoutBtn" class="nav-link logout"><i class="fas fa-sign-out-alt"></i> Déconnexion</a></div>
+    </aside>
+
+    <main class="main-content">
+        <header class="topbar">
+            <div class="welcome-text">
+                <h1>Bienvenue, Monsieur Dupont 👨‍🏫</h1>
+                <p>Gérez vos cours et suivez la progression de vos étudiants.</p>
+            </div>
+            <div class="user-info">
+                <div class="avatar" style="background: #007bff;">ESG</div>
+                <span>Enseignant</span>
+            </div>
+        </header>
+
+        <div class="action-cards">
+            <!-- Carte 1 : Saisie des notes -->
+            <a href="enseignant-saisie-notes.html" class="action-card">
+                <i class="fas fa-pen-to-square"></i>
+                <h3>Saisie des Notes</h3>
+                <p>Entrez les notes de devoirs, TP et examens pour vos différentes matières.</p>
+            </a>
+
+            <!-- Carte 2 : Suivi des étudiants -->
+            <a href="enseignant-suivi.html" class="action-card">
+                <i class="fas fa-chart-line"></i>
+                <h3>Suivi & Analyse</h3>
+                <p>Consultez les statistiques, identifiez les étudiants en difficulté et les matières faibles.</p>
+            </a>
+        </div>
+    </main>
+
+    <script>
+        if (!localStorage.getItem('saa_token') || localStorage.getItem('saa_role') !== 'enseignant') {
+            window.location.href = '/pages/login.html';
+        }
+        document.getElementById('logoutBtn').addEventListener('click', (e) => { 
+            e.preventDefault(); 
+            localStorage.clear(); 
+            window.location.href = '/pages/login.html'; 
+        });
+    </script>
+</body>
+</html>

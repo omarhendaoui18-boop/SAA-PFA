@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestion Utilisateurs - SAA</title>
+    <link rel="stylesheet" href="../assets/css/dashboard.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        .role-badge { padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+        .role-admin { background: rgba(108, 99, 255, 0.15); color: #6c63ff; }
+        .role-enseignant { background: rgba(0, 123, 255, 0.15); color: #007bff; }
+        .role-etudiant { background: rgba(40, 167, 69, 0.15); color: #28a745; }
+        /* --- STYLE TABLEAU PRO --- */
+        .glass-table th, .glass-table td { padding: 18px 20px !important; text-align: left; border-bottom: 1px solid var(--glass-border); font-size: 14px !important; }
+        .glass-table th { color: var(--text-secondary); font-weight: 500; font-size: 13px !important; text-transform: uppercase; letter-spacing: 0.5px; }
+        .glass-table tr:hover td { background: rgba(255,255,255,0.02); }
+        .glass-table { width: 100% !important; table-layout: fixed !important; }
+    </style>
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="logo-sidebar"><i class="fas fa-graduation-cap"></i><span>SAA Admin</span></div>
+        <nav class="sidebar-nav">
+            <a href="admin-dashboard.html" class="nav-link"><i class="fas fa-chart-pie"></i> Tableau de bord</a>
+            <a href="admin-gestion-etudiants.html" class="nav-link"><i class="fas fa-users"></i> Gestion Étudiants</a>
+            <a href="admin-gestion-utilisateurs.html" class="nav-link active"><i class="fas fa-user-shield"></i> Gestion Utilisateurs</a>
+            <a href="admin-matieres.html" class="nav-link"><i class="fas fa-book"></i> Matières</a>
+        </nav>
+        <div class="sidebar-footer"><a href="#" id="logoutBtn" class="nav-link logout"><i class="fas fa-sign-out-alt"></i> Déconnexion</a></div>
+    </aside>
+
+    <main class="main-content">
+        <header class="topbar">
+            <div class="welcome-text"><h1>Gestion des Comptes Utilisateurs 🔐</h1><p>Liste de tous les utilisateurs ayant accès au système.</p></div>
+        </header>
+
+        <div class="glass-card">
+            <table class="glass-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Email</th>
+                        <th>Rôle</th>
+                        <th>Statut</th>
+                    </tr>
+                </thead>
+                <tbody id="usersTableBody">
+                    <tr><td colspan="4" style="text-align:center;color:var(--text-secondary)">Chargement...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <script>
+        if (!localStorage.getItem('saa_token') || localStorage.getItem('saa_role') !== 'admin') window.location.href = '/pages/login.html';
+        document.getElementById('logoutBtn').addEventListener('click', (e) => { e.preventDefault(); localStorage.clear(); window.location.href = '/pages/login.html'; });
+
+        // Fonction pour donner la bonne couleur selon le rôle
+        function getRoleBadge(role) {
+            if (role === 'admin') return `<span class="role-badge role-admin">Administrateur</span>`;
+            if (role === 'enseignant') return `<span class="role-badge role-enseignant">Enseignant</span>`;
+            if (role === 'etudiant') return `<span class="role-badge role-etudiant">Étudiant</span>`;
+            return role;
+        }
+
+        // Charger la liste depuis la base de données
+        async function loadAllUsers() {
+            try {
+                const res = await fetch('/api/admin/users');
+                const result = await res.json();
+                const tbody = document.getElementById('usersTableBody');
+                
+                if (result.success) {
+                    tbody.innerHTML = result.data.map(user => `
+                        <tr>
+                            <td>${user.id}</td>
+                            <td>${user.email}</td>
+                            <td>${getRoleBadge(user.role)}</td>
+                            <td style="color:#28a745">Actif</td>
+                        </tr>
+                    `).join('');
+                }
+            } catch (error) {
+                document.getElementById('usersTableBody').innerHTML = '<tr><td colspan="4" style="text-align:center;color:red">Erreur de chargement</td></tr>';
+            }
+        }
+
+        loadAllUsers();
+    </script>
+</body>
+</html>

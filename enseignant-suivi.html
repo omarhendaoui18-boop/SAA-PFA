@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Suivi - SAA</title>
+    <link rel="stylesheet" href="../assets/css/dashboard.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .filter-btn { background: var(--glass-bg); border: 1px solid var(--glass-border); color: white; padding: 8px 16px; border-radius: 8px; cursor: pointer; margin-right: 10px; }
+        .filter-btn.active { background: #ff4d4d; border-color: #ff4d4d; }
+        .student-row { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid var(--glass-border); }
+        .student-row:hover { background: rgba(255,255,255,0.02); }
+        .student-name { font-weight: 600; }
+        .student-matricule { font-size: 12px; color: var(--text-secondary); }
+        .badge-danger { color: #ff4d4d; background: rgba(255,77,77,0.1); padding: 4px 10px; border-radius: 20px; font-size: 12px; }
+        .badge-warning { color: #ffc107; background: rgba(255,193,7,0.1); padding: 4px 10px; border-radius: 20px; font-size: 12px; }
+        .badge-success { color: #28a745; background: rgba(40,167,69,0.1); padding: 4px 10px; border-radius: 20px; font-size: 12px; }
+    </style>
+</head>
+<body>
+
+    <aside class="sidebar">
+        <div class="logo-sidebar"><i class="fas fa-graduation-cap"></i><span>SAA Enseignant</span></div>
+        <nav class="sidebar-nav">
+            <a href="enseignant-dashboard.html" class="nav-link"><i class="fas fa-home"></i> Accueil</a>
+            <a href="enseignant-saisie-notes.html" class="nav-link"><i class="fas fa-pen"></i> Saisie des Notes</a>
+            <a href="enseignant-suivi.html" class="nav-link active"><i class="fas fa-chart-bar"></i> Suivi Étudiants</a>
+        </nav>
+        <div class="sidebar-footer"><a href="#" id="logoutBtn" class="nav-link logout"><i class="fas fa-sign-out-alt"></i> Déconnexion</a></div>
+    </aside>
+
+    <main class="main-content">
+        <header class="topbar">
+            <div class="welcome-text"><h1>Suivi des Performances 📊</h1><p>Analyse des résultats de vos étudiants.</p></div>
+            <div class="user-info"><div class="avatar" style="background: #007bff;">ESG</div><span>Enseignant</span></div>
+        </header>
+
+        <!-- NOUVEAU GRAPHIQUE DE CLASSEMENT -->
+        <div class="glass-card" style="margin-bottom: 25px;">
+            <h2 style="font-size: 16px; margin-bottom: 20px; font-weight: 600;">📊 Classement des étudiants par moyenne</h2>
+            <div style="height: 300px; position: relative;"><canvas id="classementChart"></canvas></div>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+            <button class="filter-btn active" onclick="filterStudents('all', this)">Tous</button>
+            <button class="filter-btn" onclick="filterStudents('danger', this)"><i class="fas fa-exclamation-triangle"></i> En difficulté uniquement</button>
+        </div>
+
+        <div class="glass-card" id="suiviContainer">
+            <p style="color: var(--text-secondary); text-align: center; padding: 20px;">Chargement des données...</p>
+        </div>
+    </main>
+
+    <script>
+        if (!localStorage.getItem('saa_token') || localStorage.getItem('saa_role') !== 'enseignant') window.location.href = '/pages/login.html';
+        document.getElementById('logoutBtn').addEventListener('click', (e) => { e.preventDefault(); localStorage.clear(); window.location.href = '/pages/login.html'; });
+
+        let allStudents = [];
+
+        async function loadSuivi() {
+            try {
+                const token = localStorage.getItem('saa_token');
+                const res = await fetch('/api/enseignant/suivi', { headers: { 'Authorization': `Bearer ${token}` } });
+                const result = await res.json();
+                allStudents = result.data;
+                
+                renderStudents(allStudents);
+                renderClassementChart(allStudents);
+            } catch (error) {
+                document.getElementById('suiviContainer').innerHTML = '<p style="color:red;text-align:center;">Erreur de chargement</p>';
+            }
+        }
+
+        function renderStudents(data) {
+            const container = document.getElementById('suiviContainer');
+            if (data.length === 0) {
+                container.innerHTML = '<p style="text-align:center;color:var(--text-secondary)">Aucune donnée à afficher pour le moment.</p>';
+                return;
+            }
+            container.innerHTML = data.map(s => `
+                <div class="student-row">
+                    <div>
+                        <div class="student-name">${s.etudiant.nom} ${s.etudiant.prenom}</div>
+                        <div class="student-matricule">${s.etudiant.matricule} | Moy: <strong>${s.moyenne.toFixed(2)}</strong>/20 | Point faible: ${s.matiereFaible} (${s.noteFaible.toFixed(2)})</div>
+                    </div>
+                    <span class="badge-${s.statut.color}">${s.statut.icon} ${s.statut.label}</span>
+                </div>
+            `).join('');
+        }
+
+        function renderClassementChart(data) {
+            const topEtudiants = [...data].reverse().slice(0, 10);
+            if(topEtudiants.length === 0) return;
+
+            const ctxClassement = document.getElementById('classementChart').getContext('2d');
+            new Chart(ctxClassement, {
+                type: 'bar',
+                data: {
+                    labels: topEtudiants.map(s => `${s.etudiant.prenom} ${s.etudiant.nom}`),
+                    datasets: [{
+                        label: 'Moyenne Générale',
+                        data: topEtudiants.map(s => s.moyenne),
+                        backgroundColor: topEtudiants.map(s => {
+                            if(s.moyenne >= 12) return 'rgba(40, 167, 69, 0.7)';
+                            if(s.moyenne >= 8) return 'rgba(255, 193, 7, 0.7)';
+                            return 'rgba(255, 77, 77, 0.7)';
+                        }),
+                        borderColor: 'transparent',
+                        borderRadius: 5,
+                        barThickness: 20
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { beginAtZero: true, max: 20, grid: { color: 'rgba(255,255,255,0.05)' } },
+                        y: { grid: { display: false } }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        function filterStudents(type, btn) {
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            if (type === 'danger') {
+                renderStudents(allStudents.filter(s => s.statut.color === 'danger'));
+            } else {
+                renderStudents(allStudents);
+            }
+        }
+
+        loadSuivi();
+    </script>
+</body>
+</html>

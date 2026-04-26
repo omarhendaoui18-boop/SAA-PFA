@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Admin - SAA</title>
+    <link rel="stylesheet" href="../assets/css/dashboard.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .glass-table { width: 100% !important; table-layout: fixed !important; }
+        .glass-table th, .glass-table td { padding: 18px 20px !important; text-align: left; border-bottom: 1px solid var(--glass-border); font-size: 14px !important; }
+    </style>
+</head>
+<body>
+
+    <aside class="sidebar">
+        <div class="logo-sidebar"><i class="fas fa-graduation-cap"></i><span>SAA Admin</span></div>
+        <nav class="sidebar-nav">
+            <a href="admin-dashboard.html" class="nav-link active"><i class="fas fa-chart-pie"></i> Tableau de bord</a>
+            <a href="admin-gestion-etudiants.html" class="nav-link"><i class="fas fa-users"></i> Gestion Étudiants</a>
+            <a href="admin-gestion-utilisateurs.html" class="nav-link"><i class="fas fa-user-shield"></i> Gestion Utilisateurs</a>
+            <a href="admin-matieres.html" class="nav-link"><i class="fas fa-book"></i> Matières</a>
+        </nav>
+        <div class="sidebar-footer"><a href="#" id="logoutBtn" class="nav-link logout"><i class="fas fa-sign-out-alt"></i> Déconnexion</a></div>
+    </aside>
+
+    <main class="main-content">
+        <header class="topbar">
+            <div class="welcome-text">
+                <h1>Bonjour, Administrateur 👑</h1>
+                <p>Voici un aperçu des performances académiques globales.</p>
+            </div>
+            <div class="user-info">
+                <div class="avatar">A</div>
+                <span>Admin</span>
+            </div>
+        </header>
+
+        <section class="stats-grid">
+            <div class="stat-card card-students"><div class="stat-icon"><i class="fas fa-user-graduate"></i></div><div class="stat-info"><h3 id="stat-total">--</h3><p>Total Étudiants</p></div></div>
+            <div class="stat-card card-danger"><div class="stat-icon"><i class="fas fa-exclamation-triangle"></i></div><div class="stat-info"><h3 id="stat-danger">--</h3><p>En Danger (🔴)</p></div></div>
+            <div class="stat-card card-average"><div class="stat-icon"><i class="fas fa-chart-line"></i></div><div class="stat-info"><h3 id="stat-moyenne">--</h3><p>Moyenne Générale</p></div></div>
+            <div class="stat-card card-good"><div class="stat-icon"><i class="fas fa-check-circle"></i></div><div class="stat-info"><h3 id="stat-bon">--</h3><p>Statut Bon (🟢)</p></div></div>
+        </section>
+
+        <section class="charts-grid">
+            <div class="glass-card chart-container"><h2>Répartition des Statuts</h2><canvas id="statusChart"></canvas></div>
+            <div class="glass-card chart-container"><h2>Moyennes par Filière</h2><canvas id="filiereChart"></canvas></div>
+        </section>
+
+        <!-- NOUVEAU GRAPHIQUE ADMIN -->
+        <div class="glass-card" style="margin-top: 25px;">
+            <h2 style="font-size: 16px; margin-bottom: 20px; font-weight: 600;">📈 Analyse des Évaluations (DS vs Examens)</h2>
+            <div style="height: 300px; position: relative;"><canvas id="evalChart"></canvas></div>
+        </div>
+    </main>
+
+    <script>
+        if (!localStorage.getItem('saa_token') || localStorage.getItem('saa_role') !== 'admin') window.location.href = '/pages/login.html';
+        document.getElementById('logoutBtn').addEventListener('click', (e) => { e.preventDefault(); localStorage.clear(); window.location.href = '/pages/login.html'; });
+
+        Chart.defaults.color = '#a0a0b0';
+        Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.05)';
+
+        const statusCtx = document.getElementById('statusChart').getContext('2d');
+        const statusChart = new Chart(statusCtx, { type: 'doughnut', data: { labels: ['🟢 Bon', '🟡 Moyen', '🔴 En danger'], datasets: [{ data: [0, 0, 0], backgroundColor: ['#28a745', '#ffc107', '#ff4d4d'], borderWidth: 0 }] }, options: { responsive: true, plugins: { legend: { position: 'bottom' } } } });
+
+        const filiereCtx = document.getElementById('filiereChart').getContext('2d');
+        const filiereChart = new Chart(filiereCtx, { type: 'bar', data: { labels: [], datasets: [{ label: 'Moyenne Réelle', data: [], backgroundColor: 'rgba(108, 99, 255, 0.6)', borderColor: '#6c63ff', borderWidth: 1, borderRadius: 8 }] }, options: { responsive: true, scales: { y: { beginAtZero: true, max: 20 } }, plugins: { legend: { display: false } } } });
+
+        async function loadRealStats() {
+            const response = await fetch('/api/admin/stats');
+            const result = await response.json();
+            if (result.success) {
+                document.getElementById('stat-total').textContent = result.data.totalEtudiants;
+                document.getElementById('stat-danger').textContent = result.data.enDanger;
+                document.getElementById('stat-moyenne').textContent = result.data.moyenneGenerale + ' / 20';
+                document.getElementById('stat-bon').textContent = result.data.statutBon;
+                statusChart.data.datasets[0].data = [result.data.statutBon, result.data.statutMoyen, result.data.enDanger];
+                statusChart.update();
+            }
+        }
+
+        async function loadFilieresStats() {
+            const response = await fetch('/api/admin/stats/filieres');
+            const result = await response.json();
+            if (result.success) {
+                filiereChart.data.labels = Object.keys(result.data);
+                filiereChart.data.datasets[0].data = Object.values(result.data);
+                filiereChart.update();
+            }
+        }
+
+        // Graphique Admin
+        function loadEvalChart() {
+            const ctxEval = document.getElementById('evalChart').getContext('2d');
+            new Chart(ctxEval, {
+                type: 'line',
+                data: {
+                    labels: ['Devoirs Surveillés (DS)', 'Travaux Pratiques (TP)', 'Examens Finaux'],
+                    datasets: [{ label: 'Moyenne globale', data: [10.5, 12.0, 11.2], fill: true, backgroundColor: 'rgba(108, 99, 255, 0.1)', borderColor: '#6c63ff', pointBackgroundColor: '#6c63ff', tension: 0.3 }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0, max: 20 } }, plugins: { legend: { display: false } } }
+            });
+        }
+
+        loadRealStats();
+        loadFilieresStats();
+        loadEvalChart();
+    </script>
+</body>
+</html>

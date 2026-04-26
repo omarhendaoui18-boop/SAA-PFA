@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Saisie Notes - SAA</title>
+    <link rel="stylesheet" href="../assets/css/dashboard.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 6px; font-size: 13px; color: var(--text-secondary); }
+        .form-group select, .form-group input { width: 100%; padding: 12px; background: var(--bg-primary); border: 1px solid var(--glass-border); border-radius: 8px; color: white; outline: none; font-size: 14px;}
+        .form-group select:focus, .form-group input:focus { border-color: var(--accent-main); }
+        .btn-save { background: #28a745; color: white; border: none; padding: 12px 30px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+        .btn-save:hover { background: #218838; }
+        #noteMessage { margin-top: 15px; font-size: 14px; font-weight: 500; }
+        .success { color: #28a745; }
+        .error { color: #ff4d4d; }
+        .info-badge { display: inline-block; background: rgba(108, 99, 255, 0.15); color: var(--accent-main); padding: 4px 10px; border-radius: 20px; font-size: 12px; margin-top: 5px; }
+    </style>
+</head>
+<body>
+
+    <aside class="sidebar">
+        <div class="logo-sidebar"><i class="fas fa-graduation-cap"></i><span>SAA Enseignant</span></div>
+        <nav class="sidebar-nav">
+            <a href="enseignant-dashboard.html" class="nav-link"><i class="fas fa-home"></i> Accueil</a>
+            <a href="enseignant-saisie-notes.html" class="nav-link active"><i class="fas fa-pen"></i> Saisie des Notes</a>
+            <a href="enseignant-suivi.html" class="nav-link"><i class="fas fa-chart-bar"></i> Suivi</a>
+        </nav>
+        <div class="sidebar-footer"><a href="#" id="logoutBtn" class="nav-link logout"><i class="fas fa-sign-out-alt"></i> Déconnexion</a></div>
+    </aside>
+
+    <main class="main-content">
+        <header class="topbar">
+            <div class="welcome-text">
+                <h1>Saisie des Notes 👨‍🏫</h1>
+                <p>Sélectionnez un étudiant, une matière et entrez la note.</p>
+            </div>
+        </header>
+
+        <div class="glass-card">
+            <form id="noteForm">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Étudiant</label>
+                        <select id="etudiantSelect" required>
+                            <option value="">-- Choisir un étudiant --</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Matière</label>
+                        <select id="matiereSelect" required onchange="updateTypeNote(this.value)">
+                            <option value="">-- Choisir une matière --</option>
+                        </select>
+                        <div id="evalTypeInfo" class="info-badge" style="display:none;"></div>
+                    </div>
+                    <div class="form-group">
+                        <label>Type de Note</label>
+                        <select id="typeNoteSelect" required>
+                            <option value="">-- D'abord choisir la matière --</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Note (sur 20)</label>
+                        <input type="number" id="valeurNote" min="0" max="20" step="0.25" placeholder="ex: 12.5" required>
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn-save" id="submitBtn" disabled>
+                    <i class="fas fa-save"></i> Enregistrer la note
+                </button>
+                <div id="noteMessage"></div>
+            </form>
+        </div>
+    </main>
+
+    <!-- LE CODE EST DIRECTEMENT ICI POUR OUTRER LE CACHE -->
+    <script>
+        if (!localStorage.getItem('saa_token') || localStorage.getItem('saa_role') !== 'enseignant') {
+            window.location.href = '/pages/login.html';
+        }
+
+        document.getElementById('logoutBtn').addEventListener('click', (e) => { 
+            e.preventDefault(); 
+            localStorage.clear(); 
+            window.location.href = '/pages/login.html'; 
+        });
+
+        let matieresData = [];
+
+        // 1. Charger les étudiants
+        async function loadEtudiants() {
+            const res = await fetch('/api/admin/etudiants');
+            const data = await res.json();
+            if (data.success) {
+                data.data.forEach(etu => {
+                    document.getElementById('etudiantSelect').innerHTML += `<option value="${etu.id}">${etu.matricule} - ${etu.nom} ${etu.prenom}</option>`;
+                });
+            }
+        }
+
+        // 2. Charger UNIQUEMENT les matières de l'enseignant
+        async function loadMatieres() {
+            const token = localStorage.getItem('saa_token');
+            try {
+                const res = await fetch('/api/enseignant/mes-matieres', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                if (data.success) {
+                    matieresData = data.data;
+                    document.getElementById('matiereSelect').innerHTML = '<option value="">-- Choisir une matière --</option>';
+                    
+                    if (matieresData.length === 0) {
+                        document.getElementById('matiereSelect').innerHTML = '<option value="">Aucune matière assignée</option>';
+                        return;
+                    }
+                    
+                    matieresData.forEach(mat => {
+                        document.getElementById('matiereSelect').innerHTML += `<option value="${mat.id}">${mat.nom} (Coeff: ${mat.coefficient})</option>`;
+                    });
+                }
+            } catch (error) {
+                document.getElementById('matiereSelect').innerHTML = '<option value="">Erreur de chargement</option>';
+            }
+        }
+
+        // 3. LA FONCTION MAGIQUE POUR LE MENU DÉROULANT
+        function updateTypeNote(matId) {
+            const typeNoteSelect = document.getElementById('typeNoteSelect');
+            const evalTypeInfo = document.getElementById('evalTypeInfo');
+            const submitBtn = document.getElementById('submitBtn');
+            
+            typeNoteSelect.innerHTML = '<option value="">-- Choisir --</option>';
+            evalTypeInfo.style.display = 'none';
+
+            if (!matId) {
+                submitBtn.disabled = true;
+                return;
+            }
+
+            // Trouver la matière choisie
+            const matiere = matieresData.find(m => m.id == matId);
+            
+            if (!matiere) {
+                typeNoteSelect.innerHTML = '<option value="">Erreur</option>';
+                return;
+            }
+
+            const evalType = matiere.type_evaluation;
+            
+            evalTypeInfo.textContent = `Structure: ${evalType}`;
+            evalTypeInfo.style.display = 'inline-block';
+
+            // Remplir le menu selon le type
+            if (evalType === 'DS_EXAM_30_70' || evalType === 'DS_EXAM_50_50') {
+                typeNoteSelect.innerHTML = `<option value="DS">Devoir Surveillé (DS)</option><option value="Examen">Examen</option>`;
+            } else if (evalType === 'DS_TP_EXAM_15_15_70') {
+                typeNoteSelect.innerHTML = `<option value="DS">DS (15%)</option><option value="TP">TP (15%)</option><option value="Examen">Examen (70%)</option>`;
+            } else if (evalType === 'PFA') {
+                typeNoteSelect.innerHTML = `<option value="PFA">Note PFA</option>`;
+            }
+            
+            submitBtn.disabled = false;
+        }
+
+        // 4. Soumission
+        document.getElementById('noteForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const msgDiv = document.getElementById('noteMessage');
+            msgDiv.textContent = '';
+
+            const noteData = {
+                etudiant_id: document.getElementById('etudiantSelect').value,
+                matiere_id: document.getElementById('matiereSelect').value,
+                type_note: document.getElementById('typeNoteSelect').value,
+                valeur: parseFloat(document.getElementById('valeurNote').value)
+            };
+
+            const res = await fetch('/api/notes', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(noteData)
+            });
+
+            const result = await res.json();
+            if (result.success) {
+                msgDiv.innerHTML = `<span class="success"><i class="fas fa-check-circle"></i> ${result.message}</span>`;
+                document.getElementById('valeurNote').value = '';
+            } else {
+                msgDiv.innerHTML = `<span class="error"><i class="fas fa-times-circle"></i> ${result.message}</span>`;
+            }
+        });
+
+        // Démarrage
+        loadEtudiants();
+        loadMatieres();
+    </script>
+</body>
+</html>

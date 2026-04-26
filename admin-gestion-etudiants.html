@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestion Étudiants - SAA</title>
+    <link rel="stylesheet" href="../assets/css/dashboard.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        .content-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .btn-add { background: var(--accent-main); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+        .btn-add:hover { background: var(--accent-hover); }
+        
+        /* Styles pour les boutons d'action dans le tableau */
+        .actions-cell { display: flex; gap: 10px; }
+        .btn-action { width: 35px; height: 35px; border-radius: 8px; border: none; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: 0.2s; }
+        .btn-edit { background: rgba(0, 123, 255, 0.1); color: #007bff; }
+        .btn-edit:hover { background: #007bff; color: white; }
+        .btn-delete { background: rgba(255, 77, 77, 0.1); color: #ff4d4d; }
+        .btn-delete:hover { background: #ff4d4d; color: white; }
+
+        /* Styles des Modals */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-overlay.active { display: flex; }
+        .modal-box { background: var(--bg-secondary); border: 1px solid var(--glass-border); border-radius: 16px; padding: 30px; width: 100%; max-width: 450px; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 6px; font-size: 13px; color: var(--text-secondary); }
+        .form-group input, .form-group select { width: 100%; padding: 10px; background: var(--bg-primary); border: 1px solid var(--glass-border); border-radius: 8px; color: white; outline: none; }
+        .form-group input:focus, .form-group select:focus { border-color: var(--accent-main); }
+        .form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+        .btn-cancel { background: transparent; border: 1px solid var(--glass-border); color: white; padding: 10px 20px; border-radius: 8px; cursor: pointer; }
+        .btn-submit { background: var(--accent-main); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; }
+        .btn-submit.update { background: #007bff; } /* Couleur différente pour la modification */
+        #formMessage { text-align: center; margin-top: 10px; font-size: 13px; }
+        .success { color: #28a745; } .error { color: #ff4d4d; }
+        .modal-danger-text { color: #ff4d4d; font-size: 18px; margin-bottom: 15px; }
+        /* --- STYLE TABLEAU PRO --- */
+        .glass-table th, .glass-table td { padding: 18px 20px !important; text-align: left; border-bottom: 1px solid var(--glass-border); font-size: 14px !important; }
+        .glass-table th { color: var(--text-secondary); font-weight: 500; font-size: 13px !important; text-transform: uppercase; letter-spacing: 0.5px; }
+        .glass-table tr:hover td { background: rgba(255,255,255,0.02); }
+        .actions-cell { width: 100px; text-align: center; white-space: nowrap; }
+        .glass-table { width: 100% !important; table-layout: fixed !important; }
+    </style>
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="logo-sidebar"><i class="fas fa-graduation-cap"></i><span>SAA Admin</span></div>
+        <nav class="sidebar-nav">
+            <a href="admin-dashboard.html" class="nav-link"><i class="fas fa-chart-pie"></i> Tableau de bord</a>
+            <a href="admin-gestion-etudiants.html" class="nav-link active"><i class="fas fa-users"></i> Gestion Étudiants</a>
+            <a href="admin-gestion-utilisateurs.html" class="nav-link"><i class="fas fa-user-shield"></i> Gestion Utilisateurs</a>
+            <a href="admin-matieres.html" class="nav-link"><i class="fas fa-book"></i> Matières</a>
+        </nav>
+        <div class="sidebar-footer"><a href="#" id="logoutBtn" class="nav-link logout"><i class="fas fa-sign-out-alt"></i> Déconnexion</a></div>
+    </aside>
+
+    <main class="main-content">
+        <header class="topbar">
+            <div class="welcome-text"><h1>Gestion des Étudiants 👨‍🎓</h1><p>Ajoutez, modifiez ou supprimez des étudiants.</p></div>
+        </header>
+
+        <div class="content-header">
+            <h2>Liste des étudiants (<span id="countEtudiants">0</span>)</h2>
+            <button class="btn-add" id="openAddModalBtn"><i class="fas fa-plus"></i> Nouvel Étudiant</button>
+        </div>
+
+        <div class="glass-card">
+            <table class="glass-table">
+                <thead>
+                    <tr>
+                        <th>Matricule</th>
+                        <th>Nom Complet</th>
+                        <th>Filière</th>
+                        <th>Niveau</th>
+                        <th>Statut</th>
+                        <th>Actions</th> <!-- NOUVELLE COLONNE -->
+                    </tr>
+                </thead>
+                <tbody id="etudiantsTableBody">
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <!-- MODAL AJOUTER / MODIFIER -->
+    <div class="modal-overlay" id="formModal">
+        <div class="modal-box">
+            <h2 id="modalTitle" style="margin-bottom: 20px;">Ajouter un Étudiant</h2>
+            <form id="etudiantForm">
+                <div class="form-group"><label>Matricule</label><input type="text" id="matricule" required placeholder="ex: 2024001" ></div>
+                <div class="form-group"><label>Nom</label><input type="text" id="nom" required></div>
+                <div class="form-group"><label>Prénom</label><input type="text" id="prenom" required></div>
+                <div class="form-group">
+                    <label>Filière</label>
+                    <select id="filiere"><option>Informatique</option><option>Systèmes d'information</option><option>Réseaux & Sécurité</option></select>
+                </div>
+                <div class="form-group">
+                    <label>Niveau</label>
+                    <select id="niveau"><option>L1</option><option>L2</option><option>L3</option><option>M1</option><option>M2</option></select>
+                </div>
+                <div id="formMessage"></div>
+                <div class="form-actions">
+                    <button type="button" class="btn-cancel" onclick="closeModal('formModal')">Annuler</button>
+                    <button type="submit" class="btn-submit" id="submitBtnForm">Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL SUPPRIMER -->
+    <div class="modal-overlay" id="deleteModal">
+        <div class="modal-box" style="text-align: center;">
+            <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #ff4d4d; margin-bottom: 20px;"></i>
+            <div class="modal-danger-text">Êtes-vous sûr de vouloir supprimer cet étudiant ?</div>
+            <p style="color: var(--text-secondary); margin-bottom: 25px;">Cette action est irréversible. Le compte associé sera également supprimé.</p>
+            <div class="form-actions" style="justify-content: center;">
+                <button class="btn-cancel" onclick="closeModal('deleteModal')">Annuler</button>
+                <button class="btn-submit" id="confirmDeleteBtn" style="background: #ff4d4d;">Oui, Supprimer</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        if (!localStorage.getItem('saa_token') || localStorage.getItem('saa_role') !== 'admin') window.location.href = '/pages/login.html';
+        document.getElementById('logoutBtn').addEventListener('click', (e) => { e.preventDefault(); localStorage.clear(); window.location.href = '/pages/login.html'; });
+
+        let etudiantEnCoursId = null; 
+        let etudiantASupprimerId = null; 
+
+        // --- GESTION DES MODALS ---
+        document.getElementById('openAddModalBtn').addEventListener('click', () => {
+            etudiantEnCoursId = null;
+            document.getElementById('etudiantForm').reset();
+            document.getElementById('matricule').disabled = false; 
+            document.getElementById('modalTitle').innerText = "Ajouter un Étudiant";
+            document.getElementById('submitBtnForm').innerText = "Enregistrer";
+            document.getElementById('submitBtnForm').classList.remove('update');
+            document.getElementById('formModal').classList.add('active');
+        });
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        // --- OUVRIR MODAL MODIFICATION ---
+        function openEditModal(id) {
+            etudiantEnCoursId = id;
+            fetch(`/api/admin/etudiants`)
+                .then(res => res.json())
+                .then(result => {
+                    const etu = result.data.find(e => e.id === id);
+                    if (etu) {
+                        document.getElementById('matricule').value = etu.matricule;
+                        document.getElementById('matricule').disabled = true; 
+                        document.getElementById('nom').value = etu.nom;
+                        document.getElementById('prenom').value = etu.prenom;
+                        document.getElementById('filiere').value = etu.filiere || 'Informatique';
+                        document.getElementById('niveau').value = etu.niveau || 'L1';
+                        
+                        document.getElementById('modalTitle').innerText = "Modifier l'Étudiant";
+                        document.getElementById('submitBtnForm').innerText = "Modifier";
+                        document.getElementById('submitBtnForm').classList.add('update');
+                        document.getElementById('formModal').classList.add('active');
+                    }
+                });
+        }
+
+        // --- OUVRIR MODAL SUPPRESSION ---
+        function openDeleteModal(id) {
+            etudiantASupprimerId = id;
+            document.getElementById('deleteModal').classList.add('active');
+        }
+
+        // --- ENVOI DU FORMULAIRE (AJOUT OU MODIFICATION) ---
+        document.getElementById('etudiantForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const msgDiv = document.getElementById('formMessage');
+            msgDiv.textContent = '';
+
+            const data = {
+                matricule: document.getElementById('matricule').value,
+                nom: document.getElementById('nom').value,
+                prenom: document.getElementById('prenom').value,
+                filiere: document.getElementById('filiere').value,
+                niveau: document.getElementById('niveau').value
+            };
+
+            let url = '/api/admin/etudiants';
+            let method = 'POST';
+            
+            if (etudiantEnCoursId) {
+                url = `/api/admin/etudiants/${etudiantEnCoursId}`;
+                method = 'PUT';
+            }
+
+            try {
+                const res = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await res.json();
+                if (result.success) {
+                    closeModal('formModal');
+                    fetchEtudiants(); 
+                } else {
+                    msgDiv.innerHTML = `<span class="error">${result.message}</span>`;
+                }
+            } catch (error) {
+                alert("Erreur de modification : " + error.message);
+            }
+        });
+
+        // --- VALIDATION DE LA SUPPRESSION ---
+        document.getElementById('confirmDeleteBtn').addEventListener('click', async () => {
+            try {
+                const res = await fetch(`/api/admin/etudiants/${etudiantASupprimerId}`, { method: 'DELETE' });
+                const result = await res.json();
+                
+                if (result.success) {
+                    closeModal('deleteModal');
+                    fetchEtudiants(); 
+                } else {
+                    alert("Erreur : " + result.message);
+                }
+            } catch (error) {
+                alert("Erreur de suppression : " + error.message);
+            }
+        });
+
+        // --- AFFICHAGE DU TABLEAU ---
+        async function fetchEtudiants() {
+            const res = await fetch('/api/admin/etudiants');
+            const result = await res.json();
+            const tbody = document.getElementById('etudiantsTableBody');
+            
+            if (result.success) {
+                document.getElementById('countEtudiants').textContent = result.data.length;
+                
+                if(result.data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-secondary)">Aucun étudiant.</td></tr>';
+                    return;
+                }
+                
+                tbody.innerHTML = result.data.map(etu => `
+                    <tr>
+                        <td><strong>${etu.matricule}</strong></td>
+                        <td>${etu.nom} ${etu.prenom}</td>
+                        <td>${etu.filiere || 'Non définie'}</td>
+                        <td>${etu.niveau || 'Non défini'}</td>
+                        <td><span style="color: #28a745;">Actif</span></td>
+                        <td>
+                            <div class="actions-cell">
+                                <button class="btn-action btn-edit" onclick="openEditModal(${etu.id})" title="Modifier"><i class="fas fa-pen"></i></button>
+                                <button class="btn-action btn-delete" onclick="openDeleteModal(${etu.id})" title="Supprimer"><i class="fas fa-trash"></i></button>
+                            </div>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+        }
+
+        // Charger au démarrage
+        fetchEtudiants();
+    </script>
+</body>
+</html>
